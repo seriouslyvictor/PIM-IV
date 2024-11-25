@@ -1,0 +1,8 @@
+Nome: wasteful, CNPJ: 84758347, Telefone: 1111111, Endereço: Ok dos OK, Bairro: Super OK, Cidade: Supa Kicka, Estado: SP, CEP: 9348509, Email: supakicka@gmail.com
+  - Mês: November, Tratamento: 300.00 toneladas, Custo: 5000.00 reais
+  - Mês: Agosto, Tratamento: 50.00 toneladas, Custo: 3600.00 reais
+###END_COMPANY###
+Nome: wastefulll, CNPJ: 12323423, Telefone: 1214325, Endereço: OK dos Oksss, Bairro: OKkkkkkkk, Cidade: Osasco, Estado: SP, CEP: 99911119, Email: ok@ok.com
+  - Mês: November, Tratamento: 300.00 toneladas, Custo: 5000.00 reais
+  - Mês: Agosto, Tratamento: 50.00 toneladas, Custo: 3600.00 reais
+###END_COMPANY###
