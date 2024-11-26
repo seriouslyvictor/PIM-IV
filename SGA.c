@@ -4,8 +4,10 @@
 #include <locale.h>
 #include <windows.h>
 
+// GLOBAIS usadas pelo programa.
 #define MAX_LENGTH 100
 #define MAX_MONTHS 12
+#define SHIFT 3 // Cifra de César, deslocamos as letras em 3 caracteres.
 
 #define USER_FILE "usuarios.txt"
 #define COMPANY_FILE "empresas.txt"
@@ -45,6 +47,8 @@ int reportByCompany();
 bool processCompanyEdit(FILE *file, FILE *tempFile, const char *targetCompany);
 void updateCompanyInfo(FILE *tempFile);
 int loadCompanies(const char *filename, Company companies[], int maxCompanies);
+void caesarEncrypt(char *input, char *output, int shift);
+void caesarDecrypt(char *input, char *output, int shift);
 
 // Função principal do programa.
 int main()
@@ -56,7 +60,7 @@ int main()
     char password[MAX_LENGTH];
     char choice[3];
     displayWelcomeMessage();
-    // Validação do login
+
     while (1)
     {
         getInput("Digite o seu nome de usuário: ", username, MAX_LENGTH);
@@ -67,7 +71,7 @@ int main()
         {
             printf("Login realizado com sucesso! Bem-vindo, %s.\n", username);
             mainMenu();
-            break; // Exit the loop after successful login
+            break; // Login foi sucesso, saimos do loop.
         }
         else
         {
@@ -76,7 +80,7 @@ int main()
             if (choice[0] == 'n' || choice[0] == 'N')
             {
                 printf("Encerrando o programa.\n");
-                break; // Exit the loop if the user chooses not to retry
+                break; // Sair do sistema caso o usuário escolha não tentar de novo
             }
         }
     }
@@ -189,7 +193,6 @@ void mainMenu()
             editCompany();
             break;
         case 3:
-            // Call the function for generating reports (not implemented yet)
             openReportsMenu();
             break;
         case 4:
@@ -256,24 +259,26 @@ void registerCompany()
 
     fprintf(file, "Nome: %s, CNPJ: %s, Telefone: %s, Endereço: %s, Bairro: %s, Cidade: %s, Estado: %s, CEP: %s, Email: %s\n",
             name, cnpj, tel, rua, bairro, cidade, estado, cep, email);
-    fprintf(file, "###END_COMPANY###\n"); // Add company separator
+    fprintf(file, "###END_COMPANY###\n"); // Separador das empresas.
     closeFile(file);
     printf("Empresa cadastrada com sucesso!\n");
 }
 
 void registerUser()
 {
-    FILE *file = openFile(USER_FILE, "a");
+    FILE *file = openFile(USER_FILE, "a+");
     if (!file)
     {
         return;
     }
 
-    char username[MAX_LENGTH], password[MAX_LENGTH];
+    char username[MAX_LENGTH], password[MAX_LENGTH], encryptedPassword[MAX_LENGTH];
     getInput("\nCadastro de Novo Usuário\nNome de usuário: ", username, MAX_LENGTH);
     getInput("Senha: ", password, MAX_LENGTH);
 
-    fprintf(file, "%s %s\n", username, password);
+    caesarEncrypt(password, encryptedPassword, SHIFT); // Criptografia é aplicada antes de salvar a senha.
+
+    fprintf(file, "%s %s\n", username, encryptedPassword);
     closeFile(file);
     printf("Usuário cadastrado com sucesso!\n");
 }
@@ -473,7 +478,7 @@ void updateCompanyInfo(FILE *tempFile)
     printf("Digite as novas informações para a empresa:\n");
     printf("Exemplo: Nome: Empresa A, Endereço: Rua XYZ\n");
     fgets(updatedLine, MAX_LENGTH, stdin);
-    updatedLine[strcspn(updatedLine, "\n")] = 0; // Remove newline
+    updatedLine[strcspn(updatedLine, "\n")] = 0;
 
     fprintf(tempFile, "%s\n", updatedLine);
 }
@@ -492,7 +497,7 @@ int loadCompanies(const char *filename, Company companies[], int maxCompanies)
 
     while (fgets(line, sizeof(line), file) && count < maxCompanies)
     {
-        // Start parsing a new company
+        // Começa a leitura de uma nova empresa.
         if (strncmp(line, "Nome:", 5) == 0)
         {
             sscanf(line, " Nome: %99[^,], CNPJ: %19[^,], Telefone: %19[^,], Endereço: %199[^,], Bairro: %199[^,], Cidade: %199[^,], Estado: %2[^,], CEP: %9[^,], Email: %99[^\n]",
@@ -505,19 +510,18 @@ int loadCompanies(const char *filename, Company companies[], int maxCompanies)
                    companies[count].estado,
                    companies[count].cep,
                    companies[count].email);
+            companies[count].numMonths = 0; // Iniciar o contador de meses.
 
-            companies[count].numMonths = 0; // Initialize monthly data count
-
-            // Parse monthly data until the end of the company section
+            // Lê os dados mensais até o encontrar a linha ###END_COMPANY###
             while (fgets(line, sizeof(line), file))
             {
-                // Stop if a new company starts or end marker is found
+
                 if (strncmp(line, "###END_COMPANY###", 17) == 0 || strncmp(line, "Nome:", 5) == 0)
                 {
                     break;
                 }
 
-                // Parse monthly data if line starts with "  -"
+                // Estrutura os dados mensais caso a linha inicie com o identifcado -
                 if (strncmp(line, "  -", 3) == 0 && companies[count].numMonths < 12)
                 {
                     sscanf(line, "  - Mês: %19[^,], Tratamento: %lf toneladas, Custo: %lf reais",
@@ -539,7 +543,7 @@ int loadCompanies(const char *filename, Company companies[], int maxCompanies)
 
 int reportByCompany()
 {
-    Company empresas[100]; // Increased array size to handle multiple companies
+    Company empresas[100]; // Até 100 empresas serão listadas.
     int numEmpresas = loadCompanies(COMPANY_FILE, empresas, 100);
 
     for (int i = 0; i < numEmpresas; i++)
@@ -557,4 +561,25 @@ int reportByCompany()
         }
     }
     return 0;
+}
+
+// Inicio da Criptografia de César
+void caesarEncrypt(char *input, char *output, int shift)
+{
+    int i = 0;
+    while (input[i] != '\0')
+    {
+        char c = input[i];
+        if (isalpha(c))
+        {
+            char base = isupper(c) ? 'A' : 'a';
+            output[i] = (c - base + shift) % 26 + base;
+        }
+        else
+        {
+            output[i] = c; // Caracteres que não fazem parte do alfabeto permanecem os mesmos
+        }
+        i++;
+    }
+    output[i] = '\0'; // Terminar a String em NULL, garantindo que vamos sair do loop.
 }
